@@ -71,3 +71,36 @@ class StripeCheckout(APIView):
             # param is '' in this case
             print('Param is: %s' % e.param)
             print('Message is: %s' % e.user_message)
+
+
+
+class StripeNewCheckout(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def post(self,request):
+        try:
+            customer = stripe.Customer.create()
+            # print(customer.id)
+            data = self.request.data
+            print(data)
+            # Create a PaymentIntent with the order amount and currency
+            intent = stripe.PaymentIntent.create(
+                customer=customer['id'],
+                setup_future_usage='off_session',
+                amount=data['amount'],
+                currency=data['currency'],
+                automatic_payment_methods={
+                    'enabled': True,
+                },
+            )
+            datas = intent.client_secret
+            print(datas)
+            return Response(datas,status=status.HTTP_200_OK)
+
+            
+        except stripe.error.CardError as e:
+            err = e.error
+            # Error code will be authentication_required if authentication is needed
+            print('Code is: %s' % err.code)
+            payment_intent_id = err.payment_intent['id']
+            payment_intent = stripe.PaymentIntent.retrieve(payment_intent_id)
